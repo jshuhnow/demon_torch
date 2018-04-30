@@ -10,4 +10,6 @@ class Net(nn.Module):
         self.bootstrap_net = BootstrapNet()
         self.iterative_net = IterativeNet()
         self.refinement_net = RefinementNet()
-
+    
+    def __forward__(self):
+        pass
