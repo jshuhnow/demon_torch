@@ -34,9 +34,9 @@ class Exp(Function):
 
     def backward(self, grad_out):
         w, R = self.saved_tensors
-        return _backward(w, R, grad_out)
+        return self._backward(w, R, grad_out)
 
-    def _backward(selfself, w, R, grad_out):
+    def _backward(self,w ,R, grad_out):
         grad_w = torch.zeros(3)
         theta = torch.norm(w)
 
@@ -61,3 +61,31 @@ class WarpImgLayer(Module):
 
     def forward(self, img, flow, normalized= True, border_mode = 'value'):
         return sops.warp2d(img, flow, normalized=normalized, border_mode=border_mode)
+
+
+
+class DepthToFlowLayer(Module):
+    def __init__(self):
+        super(DepthToFlowLayer, self).__init__()
+
+    def forward(self, intrinsics, depth, rotation, translation, inverse_depth, normalized_flow):
+        return  sops.depth_to_flow(
+                intrinsics = intrinsics,
+                depth = depth,
+                rotation = rotation,
+                translation = translation,
+                inverse_depth=inverse_depth,
+                normalized_flow = normalized_flow)
+
+class FlowToDepthLayer(Module):
+    def __init__(self):
+        super(FlowToDepthLayer, self).__init__()
+
+    def forward(self,  flow, intrinsics, rotation, translation, normalized_flow, inverse_depth):
+        return sops.flow_to_depth(
+                flow=flow,
+                intrinsics=intrinsics,
+                rotation=rotation,
+                translation=translation,
+                normalized_flow =normalized_flow,
+                inverse_depth=inverse_depth)
