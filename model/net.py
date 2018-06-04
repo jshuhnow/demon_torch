@@ -15,7 +15,7 @@ intrinsics = Variable(torch.Tensor(K), requires_grad=False)
 class Net(nn.Module):
 
     def __init__(self):
-        super(Net, self).__init()
+        super(Net, self).__init__()
 
         self.bootstrap_net = BootstrapNet()
         self.iterative_net = IterativeNet()

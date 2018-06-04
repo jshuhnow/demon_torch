@@ -68,7 +68,7 @@ def conv_leakyrelu_block(input_channels, output_channels, kernel_size, stride, l
         leaky_relu
     )
 
-def upconv_leakyrelu_block(input_channels, output_channels, leaky_coeff =0.1):
+def upconv_leakyrelu_block(input_channels, output_channels=4, leaky_coeff =0.1):
     kernel_size = (4,4)
     stride = (2,2)
     padding = 1
@@ -79,17 +79,17 @@ def upconv_leakyrelu_block(input_channels, output_channels, leaky_coeff =0.1):
         nn.LeakyReLU(leaky_coeff)
     )
 
-def predict_flow_block(input_channels, output_channels=4, intermediate_channels=24):
+def _predict_flow_block(input_channels, output_channels=4, intermediate_channels=24):
 
     conv1 = conv_leakyrelu_block(input_channels, intermediate_channels, (3,3), 1)
-    conv2 = nn.Conv2d(intermediate_channels, output_channels, (3,3), padding=(1,1), stirde=1)
+    conv2 = nn.Conv2d(intermediate_channels, output_channels, (3,3), padding=(1,1), stride=1)
 
     return nn.Sequential(
         conv1,
         conv2
     )
 
-def predict_motion_block(num_inputs, leaky_coeff=0.1):
+def _predict_motion_block(num_inputs, leaky_coeff=0.1):
     """
 
     :param num_inputs:
@@ -132,14 +132,14 @@ class FlowBlock(nn.Module):
         self.conv5 = conv_leakyrelu2_block(256, 512, (5,5), 2)
         self.conv5_1 = conv_leakyrelu2_block(512, 512, (3,3), 1)
 
-        self.flow5 = _predict_flow_block(512, num_output=4)
+        self.flow5 = _predict_flow_block(512, 4)
         self.flow5_upconv = nn.ConvTranspose2d(4, 2, (4,4), stride=(2,2), padding=1)
 
         self.upconv5 = upconv_leakyrelu_block(512, 256)
         self.upconv4 = upconv_leakyrelu_block(516, 128)
         self.upconv3 = upconv_leakyrelu_block(256, 64)
 
-        self.flow2 = _predict_flow_block(128, num_outputs=4)
+        self.flow2 = _predict_flow_block(128, 4)
 
 
     def forward(self, img_pair, img2_2=None, intrinsics=None, prediction=None):
