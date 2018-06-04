@@ -1,7 +1,8 @@
 from PIL import Image
+from torch.autograd import Variable
 import os
 import numpy as np
-
+import torch
 from model.net import Net
 
 def prepare_input_data(img1, img2, data_format):
@@ -40,9 +41,13 @@ examples_dir='.'
 img1 = Image.open(os.path.join(examples_dir, 'sculpture1.png'))
 img2 = Image.open(os.path.join(examples_dir, 'sculpture2.png'))
 
-input_data = prepare_input_data(img1, img2, 'channel_first')
+input_data = prepare_input_data(img1, img2, 'channels_first')
+
+img_pair = Variable( torch.FloatTensor(input_data['image_pair']), requires_grad=False )
+img1 =Variable( torch.FloatTensor(input_data['image1']), requires_grad=False )
+img2_2= Variable( torch.FloatTensor(input_data['image2_2']), requires_grad=False )
 
 net = Net()
-result = net.forward()
+result = net(img_pair, img1, img2_2)
 print(result)
 

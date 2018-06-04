@@ -116,7 +116,6 @@ class FlowBlock(nn.Module):
         super(FlowBlock, self).__init__()
         self.conv1 = conv_leakyrelu2_block(3 * 2, 32, (9, 9), 2)
 
-
         self.conv2 = conv_leakyrelu2_block(32, 64, (7,7), 2)
         self.conv2_1 = conv_leakyrelu2_block(64, 64, (3,3), 1)
 
@@ -135,7 +134,7 @@ class FlowBlock(nn.Module):
         self.conv5_1 = conv_leakyrelu2_block(512, 512, (3,3), 1)
 
         self.flow5 = _predict_flow_block(512, 4)
-        self.flow5_upconv = nn.ConvTranspose2d(4, 2, (4,4), stride=(2,2), padding=1)
+        self.flow5_upconv = nn.ConvTranspose2d(4, 4, (4,4), stride=(2,2), padding=1)
 
         self.upconv5 = upconv_leakyrelu_block(512, 256)
         self.upconv4 = upconv_leakyrelu_block(516, 128)
@@ -153,7 +152,8 @@ class FlowBlock(nn.Module):
         :param given_prediction:
         :return:
         """
-
+	
+        print(img_pair.shape)
         conv1 = self.conv1(img_pair)
         conv2 = self.conv2(conv1)
 
@@ -182,8 +182,8 @@ class FlowBlock(nn.Module):
 
         upconv5 = self.upconv5(conv5_1)
         flow5 = self.flow5(conv5_1)
-        flow5_upconv = self.upconv(flow5)
-
+        flow5_upconv = self.flow5_upconv(flow5)
+        print(flow5_upconv.shape)
         upconv4 = self.upconv4(torch.cat( (upconv5, conv4_1, flow5_upconv), 1))
         upconv3 = self.upconv3(torch.cat( (upconv4, conv3_1), 1))
         flow2 = self.flow2(torch.cat( (upconv3, conv2_1), 1))
@@ -204,41 +204,70 @@ class DepthMotionBlock(nn.Module):
         self.conv2_extra = None
         if given_motion:
             self.conv2_extra = conv_leakyrelu2_block(8, 32, (3,3), 1)
-            self.flow_to_depth = FlowToDepthLayer
-            self.depth_refine = _predict_flow_block(64, 1, 16)
+            self.flow_to_depth = FlowToDepthLayer()
+        else:
+            self.conv2_extra = conv_leakyrelu2_block(7, 32, (3,3), 1)
 
-    def forward(self, img1, depth):
-        """
+        self.conv2_1 = conv_leakyrelu2_block(64, 64, (3,3), 1)
+        self.conv3 = conv_leakyrelu2_block(64, 128, (5,5), 2)
+        self.conv3_1 = conv_leakyrelu2_block(128, 128, (3,3), 1)
+        self.conv4 = conv_leakyrelu2_block(128, 256, (5,5), 2)
+        self.conv4_1= conv_leakyrelu2_block(256, 256, (3,3), 1)
+        self.conv5 = conv_leakyrelu2_block(256, 512, (3,3), 2)
+        self.conv5_1 = conv_leakyrelu2_block(512, 512, (3,3), 1)
 
-        :param img1:
-        :param depth:
-        :return:
-        """
+        self.upconv4 = upconv_leakyrelu_block(512, 256)
+        self.upconv3 = upconv_leakyrelu_block(514, 128)
+        self.upconv2 = upconv_leakyrelu_block(256, 64)
+        self.flow2 = _predict_flow_block(128, 4)
 
-        W, H = img1.shape[-2:]
-        upsampler = nn.Upsample(size=(H,W), mode='nearest')
+    def forward(self, img_pair, img2_2, prv_flow2, prv_flowconf2, prediction=None, intrinsics=None):
+        conv1 = self.conv1(img_pair)
+        conv2 = self.conv2(conv1)
 
-        depth_upsampled = upsampler(depth)
-        concat0 = torch.cat(
-            torch.autograd.Variable(
-                torch.from_numpy(img1),
-                requires_grad = False),
-            depth_upsampled
-            ), 1
+        warpped_img = self.warpped_img(img2_2, prv_flow2)
 
+        concat2 = None
+        if not prediction:
+            concat2 = torch.cat( (warpped_img, prv_flowconf2), 1)
+        else:
+            r, t= prediction['r'], prediction['t']
+            depth = self.flow_to_depth(intrinsics, intrinsics, prv_flow2, r, t)
 
-        conv0 = self.conv0(concat0)
-        conv1 = self.conv1(conv0)
-        conv1_1 = self.conv1_1(conv1)
-        conv2 = self.conv2(conv1_1)
-        conv2_1 = self.conv2_1(conv2)
+            concat2 = torch.cat ((warpped_img, prv_flowconf2, depth), 1)
 
-        upconv2 = self.upconv2(conv2_1)
-        upconv1 = self.upconv1(torch.cat(upconv2, conv1_1), 1)
+        extra2 = self.conv2_extra(concat2)
+        conv2_1 = self.conv2_1(torch.cat((conv2, extra2), 1))
+        conv3 = self.conv3(conv2_1)
+        conv3_1 = self.conv3_1(conv3)
+        conv4 = self.conv4(conv3_1)
+        conv4_1 = self.conv4(conv4)
+        conv5 = self.conv5(conv4_1)
+        conv5_1 = self.conv5_1(conv5)
 
-        refined_depth = self.depth_refine(torch.cadt((upconv1, conv0), 1))
-        return refined_depth
-
+        upconv4 = self.upconv4(conv5_1)
+        upconv3 = self.upconv3( torch.cat((upconv4, conv4_1), 1))
+        upconv2 = self.upconv2( torch.cat((upconv3, conv3_1), 1))
+        depth, normal = self.depth_normal( torch.cat((upconv3, conv2_1), 1))
+        motion_conv = self.motion_conv(conv5_1)
+ 
+        motion = self.motion_fc(
+            motion_conv.view(
+                motion_conv.size(0),
+                128 * 6 * 8
+            )
+        )
+ 
+        r = motion[:, 0:3]
+        t = motion[:, 3:6]
+        scale = motion[:, 6]
+        
+        return {
+            'depth' : depth,
+            'normal' : normal,
+            'r' : r,
+            't' : t
+        }
 
 class RefinementBlock(nn.Module):
 
