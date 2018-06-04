@@ -5,7 +5,7 @@ from torch.nn.modules.module import Module
 from torch.autograd import Variable, Function
 
 
-from operators import matrix_inv, axis_angle_to_rotation_matrix, per
+import lmbspecialops as sops
 
 class Exp(Function):
     def forward(self, w):
@@ -54,3 +54,10 @@ class Exp(Function):
 def exp(w):
     return Exp(w)
 
+
+class WarpImgLayer(Module):
+    def __init__(self):
+        super(WarpImgLayer, self).__init__()
+
+    def forward(self, img, flow, normalized= True, border_mode = 'value'):
+        return sops.warp2d(img, flow, normalized=normalized, border_mode=border_mode)

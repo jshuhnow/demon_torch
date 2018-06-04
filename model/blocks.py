@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import lmbspecialops as sops
 
 def conv_leakyrelu2_block(input_channels, output_channels, kernel_size, stride, leaky_coeff=0.1):
     """
@@ -119,7 +120,7 @@ class FlowBlock(nn.Module):
         self.conv2_1 = conv_leakyrelu2_block(64, 64, (3,3), 1)
 
         if given_predictions:
-            self.warp_image = WarpImageLayer()
+            self.warp_image = WarpImgLayer()
             self.depth_to_flow = DepthToFlowLayer()
             self.conv2_extra_inputs = conv_leakyrelu2_block(9, 32, (3, 3), 1)
 
