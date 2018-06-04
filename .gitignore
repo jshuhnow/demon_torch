@@ -105,3 +105,6 @@ ENV/
 
 # Jupyter
 *.ipynb
+
+# Backup files
+*.swp
