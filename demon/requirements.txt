@@ -1,0 +1,5 @@
+torchvision
+watermark
+numpy
+jupyter
+

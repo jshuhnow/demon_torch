@@ -1,7 +1,9 @@
 import torch.nn as nn
-from model.blocks import *
+import torch
 
-leaky_coeff = 0.1
+from .blocks import *
+from .constants import leaky_coeff
+
 
 
 """

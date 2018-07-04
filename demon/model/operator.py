@@ -5,7 +5,7 @@ from torch.nn.modules.module import Module
 from torch.autograd import Variable, Function
 
 
-import lmbspecialops as sops
+#import lmbspecialops as sops
 
 class Exp(Function):
     def forward(self, w):

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from model.demon_operators import DepthToFlowLayer, FlowToDepthLayer, WarpImageLayer
+
+from .layers import WarpImgLayer, DepthToFlowLayer, FlowToDepthLayer
 
 def conv_leakyrelu2_block(input_channels, output_channels, kernel_size, stride, leaky_coeff=0.1):
     """
@@ -219,9 +220,14 @@ class DepthMotionBlock(nn.Module):
         self.upconv4 = upconv_leakyrelu_block(512, 256)
         self.upconv3 = upconv_leakyrelu_block(512, 128)
         self.upconv2 = upconv_leakyrelu_block(256, 64)
-        self.depth_normal= _predict_flow_block(128, 4)
-        self.flow2 = _predict_flow_block(128, 4)
-        self.motion_conv, self.motion_fc = _predict_motion_block(512)
+
+#<<<<<<< Updated upstream:model/blocks.py
+#        self.depth_normal= _predict_flow_block(128, 4)
+#        self.flow2 = _predict_flow_block(128, 4)
+#        self.motion_conv, self.motion_fc = _predict_motion_block(512)
+#=======
+        
+        self.flow2 = _predict_flow_block(128, output_channels=4)
 
     def forward(self, img_pair, img2_2, prv_flow2, prv_flowconf2, prediction=None, intrinsics=None):
         conv1 = self.conv1(img_pair)
@@ -285,7 +291,8 @@ class RefinementBlock(nn.Module):
         self.conv2_1 = conv_leakyrelu_block(128, 128,(3,3),(1,1))
         self.upconv2 = upconv_leakyrelu_block(128, 64)
         self.upconv1 = upconv_leakyrelu_block(128, 32)
-        self.depth_refine = _predict_flow_block(64, 1,16)
+        self.depth_refine = _predict_flow_block(64, output_channels = 1, intermediate_channels=16)
+        
 
     def forward(self, img1, depth):
         """
